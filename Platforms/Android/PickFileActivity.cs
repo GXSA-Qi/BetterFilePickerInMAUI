@@ -1,4 +1,4 @@
-﻿using Android.App;
+using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.OS;
@@ -53,7 +53,7 @@ namespace MKFilePicker
         public static string? MimeType { get; set; }
         public static string[]? ExtraMimeTypes { get; set; }
         static int ActionId { get; set; }
-        public static bool HoldPermisson {get;set;}
+        public static bool HoldPermisson { get; set; }
         public static string? DisplayTitle { get; set; }
         protected override void OnCreate(Bundle? savedInstanceState)
         {
@@ -65,7 +65,7 @@ namespace MKFilePicker
                 case 1:
                     intent = new Intent(Intent.ActionOpenDocument);
                     DisplayTitle ??= "选择文件";
-                    SetMimeType(intent);                
+                    SetMimeType(intent);
                     intent.PutExtra(Intent.ExtraTitle, DisplayTitle);
                     StartActivityForResult(intent, PickFileId);
                     break;
@@ -81,9 +81,9 @@ namespace MKFilePicker
                     intent = new Intent(Intent.ActionOpenDocumentTree);
                     DisplayTitle ??= "选择文件夹";
                     intent.PutExtra(Intent.ExtraTitle, DisplayTitle);
-                    StartActivityForResult(intent,PickFolderId);
+                    StartActivityForResult(intent, PickFolderId);
                     break;
-            }         
+            }
             this.SetContentView(new Android.Widget.LinearLayout(this));
         }
         static void SetMimeType(Intent intent)
@@ -91,10 +91,10 @@ namespace MKFilePicker
             if (Build.VERSION.SdkInt >= BuildVersionCodes.Kitkat)
             {
                 intent.SetType(MimeType);
-                if (ExtraMimeTypes != null&&ExtraMimeTypes.Length>1)
+                if (ExtraMimeTypes != null && ExtraMimeTypes.Length > 1)
                 {
                     intent.SetType("*/*");
-                    intent.PutExtra(Intent.ExtraMimeTypes,ExtraMimeTypes);
+                    intent.PutExtra(Intent.ExtraMimeTypes, ExtraMimeTypes);
                 }
             }
             else
@@ -102,7 +102,7 @@ namespace MKFilePicker
                 intent.SetType(MimeType);
                 if (ExtraMimeTypes != null && ExtraMimeTypes.Length > 1)
                 {
-                    intent.SetType(string.Join("|",ExtraMimeTypes));
+                    intent.SetType(string.Join("|", ExtraMimeTypes));
                 }
             }
         }
@@ -113,7 +113,7 @@ namespace MKFilePicker
             {
                 try
                 {
-                    if (resultCode == Result.Ok&&data!=null)
+                    if (resultCode == Result.Ok && data != null)
                     {
                         var uri = data.Data;
                         var takeFlags = ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission;
@@ -122,9 +122,9 @@ namespace MKFilePicker
                             if (HoldPermisson)
                             {
                                 ContentResolver?.TakePersistableUriPermission(uri, takeFlags);
-                            }                           
+                            }
                             PickFileTaskCompletionSource?.TrySetResult(ReadFile(uri));
-                        }                      
+                        }
                     }
                 }
                 catch { }
@@ -134,13 +134,15 @@ namespace MKFilePicker
             {
                 try
                 {
-                    if (resultCode == Result.Ok&&data?.ClipData!=null)
+                    if (resultCode == Result.Ok && data?.ClipData != null)
                     {
                         var results = new List<FilePickResult>();
-                        for (int i = 0; i < data.ClipData.ItemCount; i++)
+                        int grantsLimitCount = FilePicker.GetPersistentUriGrantsLimitCount();//获取持久URI授权限制数
+                        int filesCount = data.ClipData.ItemCount> grantsLimitCount ? grantsLimitCount : data.ClipData.ItemCount;//判定选取文件数量是否超过限制，若超过则限制锁定上限
+                        for (int i = 0; i < filesCount; i++)
                         {
                             var uri = data.ClipData.GetItemAt(i);
-                            var takeFlags = ActivityFlags.GrantReadUriPermission|ActivityFlags.GrantWriteUriPermission;
+                            var takeFlags = ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission;
                             if (uri?.Uri != null)
                             {
                                 if (HoldPermisson)
@@ -152,8 +154,7 @@ namespace MKFilePicker
                                     results.Add(ReadFile(uri.Uri));
                                 }
                                 catch { }
-                            }                      
-
+                            }
                         }
                         PickFilesTaskCompletionSource?.TrySetResult(results);
                     }
@@ -174,9 +175,9 @@ namespace MKFilePicker
                         {
                             ContentResolver?.TakePersistableUriPermission(uri, takeFlags);
                         }
-                        var folderName=uri.Path?.Split(":").Last();
+                        var folderName = uri.Path?.Split(":").Last();
                         PickFolderTaskCompletionSource?.TrySetResult(
-                            new FilePickResult(folderName,GetAbsoluteFolderPath(uri),uri.ToString()));
+                            new FilePickResult(folderName, GetAbsoluteFolderPath(uri), uri.ToString()));
                     }
                 }
                 else
@@ -188,26 +189,26 @@ namespace MKFilePicker
         }
         FilePickResult ReadFile(Android.Net.Uri uri)
         {
-            var documentFile = DocumentFile.FromSingleUri(this, uri);           
+            var documentFile = DocumentFile.FromSingleUri(this, uri);
             return new FilePickResult(documentFile?.Name, GetAbsoluteFolderPath(uri), uri.ToString());
         }
         public static string? GetAbsolutePath(Android.Net.Uri uri)
         {
             using var cusor = Android.App.Application.Context.ContentResolver?.Query(uri,
                 new string[] { "_data" }, null, null, null);
-            if(cusor != null&&cusor.MoveToNext())
+            if (cusor != null && cusor.MoveToNext())
             {
-                var dataCol=cusor.GetColumnIndex("_data");
+                var dataCol = cusor.GetColumnIndex("_data");
                 return cusor.GetString(dataCol);
             }
             return uri.Path;
         }
         public static string? GetAbsoluteFolderPath(Android.Net.Uri uri)
         {
-            var path=uri?.Path?.Split(':').Last();
+            var path = uri?.Path?.Split(':').Last();
             if (path != null)
             {
-                return System.IO.Path.Combine(Android.OS.Environment.ExternalStorageDirectory?.AbsolutePath??string.Empty, path);
+                return System.IO.Path.Combine(Android.OS.Environment.ExternalStorageDirectory?.AbsolutePath ?? string.Empty, path);
             }
             return uri?.Path;
         }
