@@ -1,4 +1,4 @@
-﻿using Android.App;
+using Android.App;
 using Android.Content;
 using Android.OS;
 using Android.Provider;
@@ -241,6 +241,21 @@ namespace MKFilePicker
                 }
             }
             return file;
+        }
+        /// <summary>
+        /// 在使用Android的ACTION_OPEN_DOCUMENT进行选取文件时，需要对选取文件的数量进行限制。Android 10及以下限128个，Android 11及以上限512个。详情请见：https://issuetracker.google.com/issues/149315521
+        /// </summary>
+        /// <returns></returns>
+        public static int GetPersistentUriGrantsLimitCount()
+        {
+            if (Build.VERSION.SdkInt>BuildVersionCodes.R)
+            {
+                return 512;
+            }
+            else 
+            {
+                return 128;
+            }
         }
     }
 }
